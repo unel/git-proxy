@@ -1,5 +1,9 @@
 {
     "name": "broad-water-3597",
     "compatibility_date": "2025-10-22",
-    "main": "./worker.js"
+    "main": "./worker.js",
+    "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1
+    }
 }
