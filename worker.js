@@ -21,9 +21,6 @@ export default {
             return new Response('File Not Found', { status: 404 })
         }
 
-        // Получаем содержимое файла как ArrayBuffer для передачи в ответ
-        const fileContent = await githubResponse.arrayBuffer()
-
         // Функция определения Content-Type по расширению файла
         function getContentType(path) {
             if (path.endsWith('.js')) return 'application/javascript'
@@ -36,11 +33,23 @@ export default {
             return 'application/octet-stream'
         }
 
+        // Определяем Content-Type
+        const contentType = getContentType(filePath)
+        const isTextContent = (contentType.startsWith('text') || contentType.includes('json') || contentType.includes('javascript'))
+        // Если это текстовый тип — декодируем как UTF-8
+        let body
+        if (isTextContent) {
+            const text = await githubResponse.text()
+            body = new TextEncoder().encode(text)
+        } else {
+            body = await githubResponse.arrayBuffer()
+        }
+
         // Формируем и возвращаем ответ с нужными заголовками CORS и Content-Type
-        return new Response(fileContent, {
+        return new Response(body, {
             status: 200,
             headers: {
-                'Content-Type': getContentType(filePath),
+                'Content-Type': contentType + '; charset=utf-8',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
             },
