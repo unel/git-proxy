@@ -12,7 +12,7 @@ export default {
 
         // Формируем URL raw файла в GitHub (пример одного репо)
         // Можно логикой определять разные репозитории по первому сегменту filePath
-        const githubRawUrl = `https://raw.githubusercontent.com/unel86/git-proxy/main/${filePath}`
+        const githubRawUrl = `https://raw.githubusercontent.com/unel/git-proxy/main/${filePath}`
 
         // Запрашиваем файл из GitHub
         const githubResponse = await fetch(githubRawUrl)
