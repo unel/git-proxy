@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Proxy Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .api-info {
+            background: #f7f9fc;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .endpoint {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+        }
+
+        .endpoint-url {
+            color: #667eea;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Git Proxy Service</h1>
+        <p>Welcome to the Git Proxy Service - a Cloudflare Worker that provides API access to GitHub repositories.</p>
+
+        <div class="api-info">
+            <h2 style="color: #333; margin-bottom: 10px; font-size: 20px;">Available Endpoints</h2>
+
+            <div class="endpoint">
+                <span class="endpoint-url">GET /files/o/:owner/r/:repo/:path</span>
+                <p style="margin: 0; font-size: 14px;">Specify both owner and repository.</p>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-url">GET /files/r/:repo/:path</span>
+                <p style="margin: 0; font-size: 14px;">Use default owner: <code>{{DEFAULT_OWNER}}</code></p>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-url">GET /files/:path</span>
+                <p style="margin: 0; font-size: 14px;">Use defaults: <code>{{DEFAULT_OWNER}}/{{DEFAULT_REPO}}</code> (branch: <code>{{DEFAULT_BRANCH}}</code>)</p>
+            </div>
+        </div>
+
+        <p><strong>Usage Examples:</strong></p>
+        <p><a href="/files/o/facebook/r/react/README.md">/files/o/facebook/r/react/README.md</a> - Explicit owner and repo</p>
+        <p><a href="/files/r/modular/README.md">/files/r/modular/README.md</a> - Default owner (<code>{{DEFAULT_OWNER}}</code>)</p>
+        <p><a href="/files/worker.js">/files/worker.js</a> - Defaults (<code>{{DEFAULT_OWNER}}/{{DEFAULT_REPO}}</code>)</p>
+
+        <div class="footer">
+            Powered by Cloudflare Workers
+        </div>
+    </div>
+</body>
+</html>

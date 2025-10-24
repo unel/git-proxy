@@ -3,9 +3,7 @@ import { buildGitHubRawUrl, parseFilePath } from '../utils/github.js';
 import { getCorsHeaders, getContentTypeHeader } from '../utils/headers.js';
 
 // Обработка запроса на получение файла
-export async function handleFileRequest(request, env, ctx) {
-    const url = new URL(request.url);
-
+export async function handleFileRequest(request, env, ctx, pathParams) {
     // Проверяем кэш
     const cache = caches.default;
     let response = await cache.match(request);
@@ -15,14 +13,24 @@ export async function handleFileRequest(request, env, ctx) {
         return response;
     }
 
-    // Вырезаем путь к файлу после /files/
-    const filePath = url.pathname.replace('/files/', '');
+    // Используем параметры из URLPattern: owner, repo, path
+    const { owner, repo, path } = pathParams;
 
-    // Парсим путь и получаем параметры репозитория
-    const { owner, repo, branch, filePath: cleanFilePath } = parseFilePath(filePath);
+    // Получаем дефолтные значения из переменных окружения
+    const defaultOwner = env.DEFAULT_OWNER || 'unel';
+    const defaultRepo = env.DEFAULT_REPO || 'git-proxy';
+    const defaultBranch = env.DEFAULT_BRANCH || 'main';
+
+    // Парсим путь и получаем параметры репозитория (owner, repo, branch с дефолтами)
+    const {
+        owner: finalOwner,
+        repo: finalRepo,
+        branch,
+        filePath: cleanFilePath
+    } = parseFilePath(path, owner || defaultOwner, repo || defaultRepo, defaultBranch);
 
     // Формируем URL raw файла в GitHub
-    const githubRawUrl = buildGitHubRawUrl(owner, repo, branch, cleanFilePath);
+    const githubRawUrl = buildGitHubRawUrl(finalOwner, finalRepo, branch, cleanFilePath);
 
     // Запрашиваем файл из GitHub
     const githubResponse = await fetch(githubRawUrl);

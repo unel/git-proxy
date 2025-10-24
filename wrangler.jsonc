@@ -5,5 +5,10 @@
     "observability": {
         "enabled": true,
         "head_sampling_rate": 1
+    },
+    "vars": {
+        "DEFAULT_OWNER": "unel",
+        "DEFAULT_REPO": "git-proxy",
+        "DEFAULT_BRANCH": "main"
     }
 }

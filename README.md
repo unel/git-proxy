@@ -8,6 +8,8 @@ Git-Proxy — это легковесный serverless-прокси, котор�
 
 ## Возможности
 
+- **Гибкая маршрутизация**: URLPattern для работы с любыми репозиториями или дефолтным
+- **Конфигурируемость**: Переменные окружения для настройки дефолтных owner/repo/branch
 - **Прокси для GitHub Raw Files**: Раздает файлы из GitHub репозиториев через чистый API
 - **Автоопределение Content-Type**: Поддержка JS, CSS, HTML, JSON, изображений и др.
 - **CORS с Preflight**: Полная поддержка cross-origin запросов, включая OPTIONS preflight
@@ -16,41 +18,54 @@ Git-Proxy — это легковесный serverless-прокси, котор�
 - **Edge кэширование**: Cloudflare Cache API для минимальной задержки и снижения нагрузки на GitHub
 - **Метаданные**: Поддержка ETag, Last-Modified, Content-Length для эффективного кэширования
 - **Edge сеть**: Развернут в глобальной CDN Cloudflare для низкой задержки
+- **HTML-заглушка**: Приветственная страница с документацией API для корневого пути
 
 ## Использование
 
-### API Endpoint
+### API Endpoints
+
+Поддерживаются три варианта URL для гибкой работы с репозиториями:
 
 ```
-GET /files/{filepath}
+GET /files/o/:owner/r/:repo/:path     # Явно указать owner и repo
+GET /files/r/:repo/:path               # Использовать дефолтный owner (unel)
+GET /files/:path                       # Использовать дефолтные owner/repo (unel/git-proxy)
 ```
 
 ### Примеры
 
-Запрос файла из репозитория:
+Запрос файлов из разных репозиториев:
 
 ```bash
-# Получить JavaScript файл
-curl https://your-worker.workers.dev/files/example.js
+# Файл из конкретного репозитория
+curl https://your-worker.workers.dev/files/o/facebook/r/react/README.md
 
-# Получить CSS файл
-curl https://your-worker.workers.dev/files/styles/main.css
+# Файл из репозитория текущего owner
+curl https://your-worker.workers.dev/files/r/another-repo/config.json
 
-# Получить изображение
-curl https://your-worker.workers.dev/files/images/logo.png
+# Файл из дефолтного репозитория (unel/git-proxy)
+curl https://your-worker.workers.dev/files/worker.js
+
+# Вложенные пути работают везде
+curl https://your-worker.workers.dev/files/o/torvalds/r/linux/arch/x86/kernel/cpu/intel.c
 ```
 
 ### В браузере
 
 ```javascript
-// Загрузить JavaScript файл
-fetch('https://your-worker.workers.dev/files/script.js')
+// Загрузить файл из конкретного репозитория
+fetch('https://your-worker.workers.dev/files/o/facebook/r/react/package.json')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// Загрузить файл из дефолтного репозитория
+fetch('https://your-worker.workers.dev/files/utils/mime.js')
   .then(response => response.text())
   .then(code => console.log(code));
 
 // Загрузить изображение
 const img = document.createElement('img');
-img.src = 'https://your-worker.workers.dev/files/images/photo.jpg';
+img.src = 'https://your-worker.workers.dev/files/o/github/r/explore/blob/main/topics/javascript/javascript.png';
 ```
 
 ## Поддерживаемые типы файлов
@@ -82,13 +97,24 @@ img.src = 'https://your-worker.workers.dev/files/images/photo.jpg';
     "observability": {
         "enabled": true,
         "head_sampling_rate": 1
+    },
+    "vars": {
+        "DEFAULT_OWNER": "unel",
+        "DEFAULT_REPO": "git-proxy",
+        "DEFAULT_BRANCH": "main"
     }
 }
 ```
 
-### Текущий репозиторий
+### Переменные окружения
 
-Сейчас захардкожен для раздачи из репозитория `unel/git-proxy`, ветка `main`. Для изменения см. [utils/github.js](utils/github.js).
+Проект поддерживает настройку через переменные окружения:
+
+- **`DEFAULT_OWNER`** - GitHub owner по умолчанию (например, `unel`)
+- **`DEFAULT_REPO`** - Репозиторий по умолчанию (например, `git-proxy`)
+- **`DEFAULT_BRANCH`** - Ветка по умолчанию (например, `main`)
+
+Эти значения используются когда в URL не указаны явные параметры owner/repo. Настраиваются в секции `vars` файла `wrangler.jsonc`.
 
 ## Структура проекта
 
@@ -101,8 +127,11 @@ git-proxy/
 │   ├── mime.js             # Определение MIME-типов и работа с content-type
 │   ├── github.js           # Построение URL для GitHub Raw API
 │   └── headers.js          # Формирование HTTP заголовков (CORS, Content-Type)
-├── worker.js               # Главный обработчик запросов (роутинг)
+├── public/
+│   └── index.html          # Приветственная страница с документацией API (шаблон)
+├── worker.js               # Главный обработчик запросов (роутинг с URLPattern)
 ├── wrangler.jsonc          # Конфигурация Cloudflare Workers
+├── .gitignore              # Игнорируемые файлы (кэш, логи)
 ├── README.md               # Документация
 └── TODO.md                 # Планируемые улучшения
 ```
@@ -141,9 +170,12 @@ curl http://localhost:8787/files/README.md
 
 ## Как это работает
 
-1. **Роутинг запросов**:
+1. **Роутинг запросов** (URLPattern):
    - OPTIONS запросы → CORS preflight обработчик
-   - GET `/files/{filepath}` → обработчик файлов
+   - GET `/files/o/:owner/r/:repo/:path` → парсинг параметров и обработчик файлов
+   - GET `/files/r/:repo/:path` → дефолтный owner + обработчик файлов
+   - GET `/files/:path` → дефолтные owner/repo + обработчик файлов
+   - Остальное → HTML-заглушка с документацией
 2. **Проверка кэша**: Сначала проверяет Cloudflare Cache API
 3. **Формирование URL**: Строит URL для GitHub raw content API (при cache miss)
 4. **Получение файла**: Запрашивает файл из GitHub
@@ -166,13 +198,17 @@ curl http://localhost:8787/files/README.md
     ↓
 OPTIONS? → CORS Preflight Handler → 204 No Content
     ↓
-/files/{filepath}
+URLPattern маршрутизация:
+  ├─ /files/o/:owner/r/:repo/:path → парсинг owner, repo, path
+  ├─ /files/r/:repo/:path          → парсинг repo, path (owner = unel)
+  ├─ /files/:path                  → парсинг path (owner = unel, repo = git-proxy)
+  └─ другое                        → HTML-заглушка
     ↓
 Cache Check (Cloudflare Cache API)
     ↓
 Cache Hit? → Ответ из кэша
     ↓ (Cache Miss)
-GitHub Raw API
+GitHub Raw API (raw.githubusercontent.com)
     ↓
 Определение Content-Type
     ↓
