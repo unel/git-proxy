@@ -40,6 +40,22 @@ export default {
                 }
             }
 
+            // Редирект с favicon.ico на favicon.svg
+            if (url.pathname === '/favicon.ico') {
+                return Response.redirect(new URL('/favicon.svg', url.origin), 301);
+            }
+
+            // Обработка запроса к фавиконке
+            if (url.pathname === '/favicon.svg') {
+                const { faviconSVG } = await import('./public/favicon.js');
+                return new Response(faviconSVG, {
+                    headers: {
+                        'Content-Type': 'image/svg+xml',
+                        'Cache-Control': 'public, max-age=86400', // кешируем на сутки
+                    },
+                });
+            }
+
             // Для всех остальных путей отдаём HTML-заглушку с подстановкой переменных окружения
             const { default: indexHTML } = await import('./public/index.html');
 
