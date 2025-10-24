@@ -148,14 +148,21 @@ img.src = 'https://your-worker.workers.dev/files/o/github/r/explore/blob/main/to
 git-proxy/
 ├── handlers/
 │   ├── fileHandler.js      # Обработчик запросов на получение файлов
+│   ├── faviconHandler.js   # Обработчик фавиконки
+│   ├── indexHandler.js     # Обработчик главной страницы
 │   └── preflightHandler.js # Обработчик CORS preflight (OPTIONS)
 ├── utils/
 │   ├── mime.js             # Определение MIME-типов и работа с content-type
 │   ├── github.js           # Построение URL для GitHub Raw API
-│   └── headers.js          # Формирование HTTP заголовков (CORS, Content-Type)
+│   ├── headers.js          # Формирование HTTP заголовков (CORS, Content-Type)
+│   ├── errors.js           # Структурированная обработка ошибок
+│   └── router.js           # Система роутинга с URLPattern
 ├── public/
-│   └── index.html          # Приветственная страница с документацией API (шаблон)
-├── worker.js               # Главный обработчик запросов (роутинг с URLPattern)
+│   ├── index.html          # Приветственная страница с документацией API (шаблон)
+│   ├── favicon.svg         # SVG фавиконка
+│   └── favicon.js          # Модуль с экспортом SVG фавиконки
+├── routes.js               # Конфигурация маршрутов приложения
+├── worker.js               # Главный обработчик запросов
 ├── wrangler.jsonc          # Конфигурация Cloudflare Workers
 ├── .gitignore              # Игнорируемые файлы (кэш, логи)
 ├── README.md               # Документация
@@ -219,32 +226,31 @@ curl http://localhost:8787/files/README.md
 
 ## Архитектура
 
+Проект построен на модульной архитектуре с централизованным роутингом:
+
 ```
 Запрос клиента
     ↓
 OPTIONS? → CORS Preflight Handler → 204 No Content
     ↓
-URLPattern маршрутизация:
-  ├─ /files/o/:owner/r/:repo/:path → парсинг owner, repo, path
-  ├─ /files/r/:repo/:path          → парсинг repo, path (owner = unel)
-  ├─ /files/:path                  → парсинг path (owner = unel, repo = git-proxy)
-  └─ другое                        → HTML-заглушка
+Router (routes.js) - проверка URLPattern по приоритету:
+  ├─ /favicon.ico                  → Редирект на /favicon.svg (301)
+  ├─ /favicon.svg                  → Фавиконка (SVG)
+  ├─ /files/o/:owner/r/:repo/:path → File Handler (явный owner/repo)
+  ├─ /files/r/:repo/:path          → File Handler (дефолтный owner)
+  ├─ /files/:path                  → File Handler (дефолтные owner/repo)
+  └─ другое                        → Index Handler (HTML-заглушка)
     ↓
-Cache Check (Cloudflare Cache API)
-    ↓
-Cache Hit? → Ответ из кэша
-    ↓ (Cache Miss)
-GitHub Raw API (raw.githubusercontent.com)
-    ↓
-Определение Content-Type
-    ↓
-Обработка кодировки
-    ↓
-Формирование заголовков (CORS, Metadata, Cache-Control)
-    ↓
-Сохранение в кэш (ctx.waitUntil)
-    ↓
-Ответ клиенту
+File Handler:
+  ├─ Cache Check (Cloudflare Cache API)
+  ├─ Cache Hit? → Ответ из кэша
+  └─ Cache Miss:
+      ├─ GitHub Raw API (raw.githubusercontent.com)
+      ├─ Определение Content-Type
+      ├─ Обработка кодировки
+      ├─ Формирование заголовков (CORS, Metadata, Cache-Control)
+      ├─ Сохранение в кэш (ctx.waitUntil)
+      └─ Ответ клиенту
 ```
 
 ## Кэширование
