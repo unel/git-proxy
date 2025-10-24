@@ -2,6 +2,7 @@ import { getContentTypeFromExtension, isTextContentType } from '../utils/mime.js
 import { buildGitHubRawUrl, parseFilePath, getCacheControlForRef } from '../utils/github.js';
 import { getCorsHeaders, getContentTypeHeader } from '../utils/headers.js';
 import { createErrorResponse, getErrorTypeFromGitHubResponse } from '../utils/errors.js';
+import { tryCompress } from '../utils/compression.js';
 
 // Обработка запроса на получение файла
 export async function handleFileRequest(request, env, ctx, params) {
@@ -53,15 +54,33 @@ export async function handleFileRequest(request, env, ctx, params) {
         // Получаем тело ответа без лишних перекодировок
         const body = await githubResponse.arrayBuffer();
 
+        // Определяем, является ли контент текстовым
+        const isText = isTextContentType(contentType);
+
+        // Пытаемся сжать контент (если это текст и клиент поддерживает компрессию)
+        const acceptEncoding = request.headers.get('Accept-Encoding') || '';
+        const { body: finalBody, encoding: contentEncoding } = await tryCompress(
+            body,
+            acceptEncoding,
+            contentType,
+            isText
+        );
+
         // Формируем заголовки ответа
         const headers = {
-            'Content-Type': getContentTypeHeader(contentType, isTextContentType(contentType)),
+            'Content-Type': getContentTypeHeader(contentType, isText),
             ...getCorsHeaders(),
         };
 
+        // Добавляем Content-Encoding если контент был сжат
+        if (contentEncoding) {
+            headers['Content-Encoding'] = contentEncoding;
+        }
+
         // Добавляем метаданные от GitHub
         const contentLength = githubResponse.headers.get('Content-Length');
-        if (contentLength) {
+        // Content-Length добавляем только если контент не был сжат
+        if (contentLength && !contentEncoding) {
             headers['Content-Length'] = contentLength;
         }
 
@@ -82,7 +101,7 @@ export async function handleFileRequest(request, env, ctx, params) {
         headers['Cache-Control'] = getCacheControlForRef(ref);
 
         // Создаём ответ
-        response = new Response(body, {
+        response = new Response(finalBody, {
             status: 200,
             headers,
         });
