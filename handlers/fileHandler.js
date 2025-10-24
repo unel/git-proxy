@@ -69,6 +69,7 @@ export async function handleFileRequest(request, env, ctx, params) {
         // Формируем заголовки ответа
         const headers = {
             'Content-Type': getContentTypeHeader(contentType, isText),
+            'Content-Disposition': 'inline', // Открывать в браузере, а не скачивать
             ...getCorsHeaders(),
         };
 
