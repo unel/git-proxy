@@ -9,6 +9,7 @@ Git-Proxy — это легковесный serverless-прокси, котор�
 ## Возможности
 
 - **Гибкая маршрутизация**: URLPattern для работы с любыми репозиториями или дефолтным
+- **Версионирование**: Query параметр `?ref=` для получения файлов из конкретной ветки, коммита или тега
 - **Конфигурируемость**: Переменные окружения для настройки дефолтных owner/repo/branch
 - **Прокси для GitHub Raw Files**: Раздает файлы из GitHub репозиториев через чистый API
 - **Автоопределение Content-Type**: Поддержка JS, CSS, HTML, JSON, изображений и др.
@@ -32,6 +33,12 @@ GET /files/r/:repo/:path               # Использовать дефолтн
 GET /files/:path                       # Использовать дефолтные owner/repo (unel/git-proxy)
 ```
 
+#### Query параметры
+
+- **`?ref=<branch|commit|tag>`** - Указать конкретную версию файла (ветку, коммит или тег)
+  - По умолчанию используется `DEFAULT_BRANCH` (main)
+  - Примеры: `?ref=develop`, `?ref=abc123def`, `?ref=v1.0.0`
+
 ### Примеры
 
 Запрос файлов из разных репозиториев:
@@ -48,6 +55,15 @@ curl https://your-worker.workers.dev/files/worker.js
 
 # Вложенные пути работают везде
 curl https://your-worker.workers.dev/files/o/torvalds/r/linux/arch/x86/kernel/cpu/intel.c
+
+# Получить файл из другой ветки
+curl https://your-worker.workers.dev/files/README.md?ref=develop
+
+# Получить файл из конкретного коммита
+curl https://your-worker.workers.dev/files/worker.js?ref=abc123def456
+
+# Получить файл из тега (релиза)
+curl https://your-worker.workers.dev/files/o/facebook/r/react/package.json?ref=v18.0.0
 ```
 
 ### В браузере
@@ -62,6 +78,16 @@ fetch('https://your-worker.workers.dev/files/o/facebook/r/react/package.json')
 fetch('https://your-worker.workers.dev/files/utils/mime.js')
   .then(response => response.text())
   .then(code => console.log(code));
+
+// Загрузить файл из конкретной ветки
+fetch('https://your-worker.workers.dev/files/worker.js?ref=develop')
+  .then(response => response.text())
+  .then(code => console.log(code));
+
+// Загрузить файл из конкретного коммита (иммутабельно)
+fetch('https://your-worker.workers.dev/files/README.md?ref=abc123def')
+  .then(response => response.text())
+  .then(content => console.log(content));
 
 // Загрузить изображение
 const img = document.createElement('img');

@@ -1,10 +1,10 @@
 import { getContentTypeFromExtension, isTextContentType } from '../utils/mime.js';
-import { buildGitHubRawUrl, parseFilePath } from '../utils/github.js';
+import { buildGitHubRawUrl, parseFilePath, getCacheControlForRef } from '../utils/github.js';
 import { getCorsHeaders, getContentTypeHeader } from '../utils/headers.js';
 import { createErrorResponse, getErrorTypeFromGitHubResponse } from '../utils/errors.js';
 
 // Обработка запроса на получение файла
-export async function handleFileRequest(request, env, ctx, pathParams) {
+export async function handleFileRequest(request, env, ctx, params) {
     try {
         // Проверяем кэш
         const cache = caches.default;
@@ -15,8 +15,8 @@ export async function handleFileRequest(request, env, ctx, pathParams) {
             return response;
         }
 
-        // Используем параметры из URLPattern: owner, repo, path
-        const { owner, repo, path } = pathParams;
+        // Извлекаем параметры: owner, repo, path из URL и ref из query
+        const { owner, repo, path, ref } = params;
 
         // Получаем дефолтные значения из переменных окружения
         const defaultOwner = env.DEFAULT_OWNER || 'unel';
@@ -29,7 +29,7 @@ export async function handleFileRequest(request, env, ctx, pathParams) {
             repo: finalRepo,
             branch,
             filePath: cleanFilePath
-        } = parseFilePath(path, owner || defaultOwner, repo || defaultRepo, defaultBranch);
+        } = parseFilePath(path, owner || defaultOwner, repo || defaultRepo, defaultBranch, ref);
 
         // Формируем URL raw файла в GitHub
         const githubRawUrl = buildGitHubRawUrl(finalOwner, finalRepo, branch, cleanFilePath);
@@ -75,9 +75,11 @@ export async function handleFileRequest(request, env, ctx, pathParams) {
             headers['Last-Modified'] = lastModified;
         }
 
-        // Устанавливаем Cache-Control для клиента и CDN
-        // Публичный кэш на 1 час, stale-while-revalidate на 1 день
-        headers['Cache-Control'] = 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400';
+        // Устанавливаем динамический Cache-Control в зависимости от типа ref:
+        // - commit SHA: 1 год (иммутабелен)
+        // - tag: 1 неделя (редко меняется)
+        // - branch: 5 минут (часто обновляется)
+        headers['Cache-Control'] = getCacheControlForRef(ref);
 
         // Создаём ответ
         response = new Response(body, {

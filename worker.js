@@ -29,8 +29,14 @@ export default {
             for (const pattern of filePatterns) {
                 const match = pattern.exec(url);
                 if (match) {
-                    // Обработка запроса на получение файла, передаём распарсенные параметры
-                    return handleFileRequest(request, env, ctx, match.pathname.groups);
+                    // Собираем все параметры запроса
+                    const params = {
+                        ...match.pathname.groups,
+                        ref: url.searchParams.get('ref'), // branch, commit SHA или tag
+                    };
+
+                    // Обработка запроса на получение файла
+                    return handleFileRequest(request, env, ctx, params);
                 }
             }
 
